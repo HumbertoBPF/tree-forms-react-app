@@ -4,7 +4,7 @@ import {
     InitiateAuthCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 
-const COGNITO_CLIENT_ID = '5dhghk2n8v2e1ciasifbf5jdon';
+const COGNITO_CLIENT_ID = '5ebqt3u94ilj66vh1insicmi62';
 
 const initiateAuth = ({ username, password }) => {
     const client = new CognitoIdentityProviderClient({ region: 'us-east-1' });

@@ -1,6 +1,8 @@
+import Cookies from 'js-cookie';
 import { jwtDecode } from 'jwt-decode';
 
-export const getUsername = (token) => {
+export const getUsername = () => {
+    const token = Cookies.get('token');
     try {
         const payload = jwtDecode(token);
         return payload['cognito:username'];
@@ -9,4 +11,6 @@ export const getUsername = (token) => {
     }
 };
 
-export const isAuth = (token) => getUsername(token) !== null;
+export const isAuth = () => {
+    return getUsername() !== null;
+};

@@ -3,11 +3,7 @@ import {
     Box,
     Button,
     CircularProgress,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    TextField,
+    Grid,
     Typography,
 } from '@mui/material';
 import { RichTreeView, useTreeViewApiRef } from '@mui/x-tree-view';
@@ -17,67 +13,39 @@ import ChecklistIcon from '@mui/icons-material/Checklist';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import EditIcon from '@mui/icons-material/Edit';
 import HomeIcon from '@mui/icons-material/Home';
+import SaveIcon from '@mui/icons-material/Save';
 import { isAuth } from 'utils/user';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import api from 'api';
-
-function buildNode(id, label, children = []) {
-    return {
-        id,
-        label,
-        children,
-    };
-}
-
-const FORM_TREE = [
-    buildNode('age', 'How old are you?', [
-        buildNode('lower_18', 'Younger than 18 years old', [
-            buildNode('school', 'Are you at school?', [
-                buildNode('yes_school', 'Yes', [
-                    buildNode('school_grade', 'What grade?', [
-                        buildNode('elementary_school', 'Elementary school'),
-                        buildNode('high_school', 'High school'),
-                    ]),
-                ]),
-                buildNode('no_school', 'No'),
-            ]),
-        ]),
-        buildNode('between_18_and_65', 'Between 18 and 65', [
-            buildNode('profession', "What's your profession?", [
-                buildNode('engineer_profession', 'Engineer', [
-                    buildNode(
-                        'driver_license',
-                        'Do you have a driver license?',
-                        [
-                            buildNode('yes_driver_license', 'Yes'),
-                            buildNode('no_driver_license', 'No'),
-                        ]
-                    ),
-                ]),
-                buildNode('doctor_profession', 'Doctor'),
-                buildNode('lawyer_profession', 'Lawyer'),
-                buildNode('educator_profession', 'Educator'),
-            ]),
-        ]),
-        buildNode('plus_65', 'Older than 65 years old'),
-    ]),
-];
+import { deleteNode } from 'utils/tree';
+import TreeNodeDialog from 'components/TreeNodeDialog';
+import DeleteConfirmationDialog from 'components/DeleteConfirmationDialog';
+import NotificationSnackbar from 'components/NotificationSnackbar';
 
 function FormTree() {
-    // @ts-ignore
-    const token = useSelector((state) => state.user.token);
-
     const apiRef = useTreeViewApiRef();
 
     const [isLoading, setIsLoading] = useState(true);
     const [form, setForm] = useState(undefined);
+    const [tree, setTree] = useState([]);
 
-    const [label, setLabel] = useState('');
-    const [openNodeDialog, setOpenNodeDialog] = useState(false);
-    const [selectedNode, setSelectedNode] = useState(null);
+    const [openTreeNodeDialog, setOpenTreeNodeDialog] = useState(false);
+
+    const [openDeleteConfirmationDialog, setOpenDeleteConfirmationDialog] =
+        useState(false);
+
+    const [operation, setOperation] = useState('create');
+    const [selectedNode, setSelectedNode] = useState({});
     const [selectedItems, setSelectedItems] = useState([]);
     const toggledItemRef = useRef({});
+
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const [notification, setNotification] = useState({
+        message: undefined,
+        severity: 'error',
+    });
 
     const navigate = useNavigate();
 
@@ -85,11 +53,13 @@ function FormTree() {
     const { id } = params;
 
     useEffect(() => {
-        if (isAuth(token)) {
-            api.get(`/form/${id}`)
+        if (isAuth()) {
+            api()
+                .get(`/form/${id}`)
                 .then((response) => {
                     const item = response.data;
                     setForm(item);
+                    setTree(item.form_tree);
                     setIsLoading(false);
                 })
                 .catch(() => {
@@ -99,10 +69,10 @@ function FormTree() {
     }, []);
 
     useEffect(() => {
-        if (!isAuth(token)) {
+        if (!isAuth()) {
             navigate('/login');
         }
-    }, [token]);
+    }, []);
 
     const getItemDescendantsIds = (item) => {
         const ids = [];
@@ -140,15 +110,62 @@ function FormTree() {
         setSelectedItems([...itemsToSelect]);
     };
 
+    const handleDeleteAllSelected = () => {
+        if (selectedItems.includes('root')) {
+            setNotification({
+                message: 'You cannot delete the initial node.',
+                severity: 'error',
+            });
+            return;
+        }
+
+        setOpenDeleteConfirmationDialog(true);
+    };
+
+    const handleConfirmDeletion = () => {
+        setIsDeleting(true);
+
+        let updatedTree = [...tree];
+
+        selectedItems.forEach((selectedItem) => {
+            updatedTree = [...deleteNode(selectedItem, updatedTree)];
+        });
+
+        setTree(updatedTree);
+
+        setIsDeleting(false);
+        setOpenDeleteConfirmationDialog(false);
+    };
+
     const handleOpenNodeDialog = (node) => {
-        console.log(node);
-        setSelectedNode(node);
-        setLabel(node ? node.label : '');
-        setOpenNodeDialog(true);
+        setOperation(node ? 'update' : 'create');
+        setSelectedNode(apiRef.current.getItem(selectedItems[0]));
+        setOpenTreeNodeDialog(true);
     };
 
     const handleCloseNodeDialog = () => {
-        setOpenNodeDialog(false);
+        setOpenTreeNodeDialog(false);
+    };
+
+    const handleSave = () => {
+        setIsSaving(true);
+
+        api()
+            .put(`/form/${id}/form-tree`, tree)
+            .then(() => {
+                setIsSaving(false);
+                setNotification({
+                    message: 'Form tree successfully saved.',
+                    severity: 'success',
+                });
+            })
+            .catch(() => {
+                setIsSaving(false);
+                setNotification({
+                    message: 'Error when saving the form tree.',
+                    severity: 'error',
+                });
+            });
     };
 
     const renderForm = () => (
@@ -175,9 +192,23 @@ function FormTree() {
                 </Box>
             ) : (
                 <>
-                    <Typography marginBottom="8px" variant="h6">
-                        {form.name}
-                    </Typography>
+                    <Grid container>
+                        <Grid item flexGrow={1}>
+                            <Typography marginBottom="8px" variant="h6">
+                                {form.name}
+                            </Typography>
+                        </Grid>
+                        <Grid item>
+                            <Button
+                                color="success"
+                                disabled={isSaving}
+                                onClick={handleSave}
+                                startIcon={<SaveIcon />}
+                            >
+                                Save form
+                            </Button>
+                        </Grid>
+                    </Grid>
                     <Button
                         disabled={selectedItems.length !== 1}
                         onClick={() => handleOpenNodeDialog(null)}
@@ -201,55 +232,30 @@ function FormTree() {
                         onClick={handleSelectAllChildren}
                         startIcon={<ChecklistIcon />}
                     >
-                        Select all children
+                        Select children
                     </Button>
                     <Button
                         disabled={selectedItems.length === 0}
                         color="error"
+                        onClick={handleDeleteAllSelected}
                         startIcon={<DeleteIcon />}
                     >
-                        Delete all selected
+                        Delete selected
                     </Button>
-                    <Dialog
-                        open={openNodeDialog}
-                        onClose={handleCloseNodeDialog}
-                        PaperProps={{
-                            component: 'form',
-                            onSubmit: (event) => {
-                                event.preventDefault();
-                                console.log(selectedNode);
-                                handleCloseNodeDialog();
-                            },
-                        }}
-                    >
-                        <DialogTitle>
-                            {selectedNode ? 'Edit node' : 'Create node'}
-                        </DialogTitle>
-                        <DialogContent>
-                            <TextField
-                                autoFocus
-                                required
-                                margin="dense"
-                                id="label"
-                                name="label"
-                                label="Label"
-                                fullWidth
-                                onChange={(event) =>
-                                    setLabel(event.target.value)
-                                }
-                                multiline
-                                rows={8}
-                                variant="standard"
-                                value={label}
-                            />
-                        </DialogContent>
-                        <DialogActions>
-                            <Button onClick={handleCloseNodeDialog}>
-                                Cancel
-                            </Button>
-                            <Button type="submit">Save</Button>
-                        </DialogActions>
-                    </Dialog>
+                    <TreeNodeDialog
+                        handleClose={handleCloseNodeDialog}
+                        open={openTreeNodeDialog}
+                        operation={operation}
+                        selectedNode={selectedNode}
+                        setTree={setTree}
+                        tree={tree}
+                    />
+                    <DeleteConfirmationDialog
+                        loading={isDeleting}
+                        onClose={() => setOpenDeleteConfirmationDialog(false)}
+                        onConfirm={handleConfirmDeletion}
+                        open={openDeleteConfirmationDialog}
+                    />
                     <Box sx={{ minWidth: 250 }}>
                         <RichTreeView
                             checkboxSelection
@@ -258,9 +264,19 @@ function FormTree() {
                             selectedItems={selectedItems}
                             onSelectedItemsChange={handleSelectedItemsChange}
                             onItemSelectionToggle={handleItemSelectionToggle}
-                            items={FORM_TREE}
+                            items={tree}
                         />
                     </Box>
+                    <NotificationSnackbar
+                        message={notification.message}
+                        onClose={() =>
+                            setNotification({
+                                ...notification,
+                                message: undefined,
+                            })
+                        }
+                        severity={notification.severity}
+                    />
                 </>
             )}
         </>

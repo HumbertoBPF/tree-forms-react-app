@@ -13,21 +13,17 @@ import CancelIcon from '@mui/icons-material/Close';
 import EditToolbar from 'components/EditToolbar';
 import { useNavigate } from 'react-router-dom';
 import { isAuth } from 'utils/user';
-import { useSelector } from 'react-redux';
 import api from 'api';
 import DeleteConfirmationDialog from 'components/DeleteConfirmationDialog';
-import ErrorSnackbar from 'components/ErrorSnackbar';
+import NotificationSnackbar from 'components/NotificationSnackbar';
 
 function Forms() {
-    // @ts-ignore
-    const token = useSelector((state) => state.user.token);
-
     const [rows, setRows] = useState([]);
     const [rowModesModel, setRowModesModel] = useState({});
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
 
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(undefined);
+    const [message, setMessage] = useState(undefined);
 
     const [deletionId, setDeletionId] = useState(undefined);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -37,15 +33,16 @@ function Forms() {
     const maxId = rows.length;
 
     useEffect(() => {
-        if (isAuth(token)) {
-            api.get('/form')
+        if (isAuth()) {
+            api()
+                .get('/form')
                 .then((response) => {
                     const { items } = response.data;
                     setRows(items);
                     setIsLoading(false);
                 })
                 .catch(() => {
-                    setError(
+                    setMessage(
                         'An error happened while loading your forms. Please try again.'
                     );
                     setIsLoading(false);
@@ -54,7 +51,7 @@ function Forms() {
         }
 
         navigate('/login');
-    }, [token]);
+    }, []);
 
     const handleRowEditStop = (params, event) => {
         if (params.reason === GridRowEditStopReasons.rowFocusOut) {
@@ -82,7 +79,8 @@ function Forms() {
 
     const deleteForm = () => {
         setIsDeleting(true);
-        api.delete(`/form/${deletionId}`)
+        api()
+            .delete(`/form/${deletionId}`)
             .then(() => {
                 setRows(rows.filter((row) => row.id !== deletionId));
                 setIsDeleting(false);
@@ -92,7 +90,7 @@ function Forms() {
                 setIsDeleting(false);
                 setDeletionId(undefined);
 
-                setError(
+                setMessage(
                     'An error happened while deleting the form. Please try again.'
                 );
             });
@@ -110,43 +108,57 @@ function Forms() {
         }
     };
 
+    const isFormValid = (form) => form.name;
+
     const processRowUpdate = (newRow, originalRow) => {
-        if (originalRow.isNew) {
-            api.post('/form', newRow)
-                .then((response) => {
-                    const item = response.data;
-                    setRows(
-                        rows.map((row) => (row.id === newRow.id ? item : row))
-                    );
-                })
-                .catch(() => {
-                    setError(
-                        'An error happened while creating the form. Please try again.'
-                    );
-                    setRows(rows.filter((row) => row.id !== newRow.id));
-                });
-        } else {
-            api.put(`/form/${newRow.id}`, newRow)
-                .then((response) => {
-                    const item = response.data;
-                    setRows(
-                        rows.map((row) => (row.id === newRow.id ? item : row))
-                    );
-                })
-                .catch(() => {
-                    setError(
-                        'An error happened while updating the form. Please try again.'
-                    );
-                    setRows(
-                        rows.map((row) =>
-                            row.id === newRow.id ? originalRow : row
-                        )
-                    );
-                });
+        if (isFormValid(newRow)) {
+            if (originalRow.isNew) {
+                api()
+                    .post('/form', newRow)
+                    .then((response) => {
+                        const item = response.data;
+                        setRows(
+                            rows.map((row) =>
+                                row.id === newRow.id ? item : row
+                            )
+                        );
+                    })
+                    .catch(() => {
+                        setMessage(
+                            'An error happened while creating the form. Please try again.'
+                        );
+                        setRows(rows.filter((row) => row.id !== newRow.id));
+                    });
+            } else {
+                api()
+                    .put(`/form/${newRow.id}`, newRow)
+                    .then((response) => {
+                        const item = response.data;
+                        setRows(
+                            rows.map((row) =>
+                                row.id === newRow.id ? item : row
+                            )
+                        );
+                    })
+                    .catch(() => {
+                        setMessage(
+                            'An error happened while updating the form. Please try again.'
+                        );
+                        setRows(
+                            rows.map((row) =>
+                                row.id === newRow.id ? originalRow : row
+                            )
+                        );
+                    });
+            }
+            const updatedRow = { ...newRow, isNew: false };
+            setRows(
+                rows.map((row) => (row.id === newRow.id ? updatedRow : row))
+            );
+            return updatedRow;
         }
-        const updatedRow = { ...newRow, isNew: false };
-        setRows(rows.map((row) => (row.id === newRow.id ? updatedRow : row)));
-        return updatedRow;
+
+        setMessage('The name of a form must not be empty');
     };
 
     const handleRowModesModelChange = (newRowModesModel) => {
@@ -266,7 +278,11 @@ function Forms() {
                 pageSizeOptions={[10]}
             />
 
-            <ErrorSnackbar error={error} onClose={() => setError(undefined)} />
+            <NotificationSnackbar
+                message={message}
+                severity="error"
+                onClose={() => setMessage(undefined)}
+            />
         </>
     );
 }

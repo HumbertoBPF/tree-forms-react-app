@@ -6,12 +6,12 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import DeleteConfirmationDialog from 'components/DeleteConfirmationDialog';
 import api from 'api';
-import ErrorSnackbar from 'components/ErrorSnackbar';
+import NotificationSnackbar from 'components/NotificationSnackbar';
 
 function EditToolbar({ maxId, rowSelectionModel, setRows, setRowModesModel }) {
     const [openConfirmationDialog, setOpenConfirmationDialog] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [error, setError] = useState(undefined);
+    const [message, setMessage] = useState(undefined);
 
     const handleClickAddButton = () => {
         const id = maxId + 1;
@@ -32,11 +32,12 @@ function EditToolbar({ maxId, rowSelectionModel, setRows, setRowModesModel }) {
     const bulkDelete = () => {
         setIsDeleting(true);
 
-        api.delete('/form', {
-            data: {
-                form_ids: rowSelectionModel,
-            },
-        })
+        api()
+            .delete('/form', {
+                data: {
+                    form_ids: rowSelectionModel,
+                },
+            })
             .then(() => {
                 setIsDeleting(false);
                 setOpenConfirmationDialog(false);
@@ -51,7 +52,7 @@ function EditToolbar({ maxId, rowSelectionModel, setRows, setRowModesModel }) {
                 setIsDeleting(false);
                 setOpenConfirmationDialog(false);
 
-                setError(
+                setMessage(
                     'An error happened while deleting the forms. Please try again.'
                 );
             });
@@ -82,7 +83,11 @@ function EditToolbar({ maxId, rowSelectionModel, setRows, setRowModesModel }) {
                     Delete selected records
                 </Button>
             </GridToolbarContainer>
-            <ErrorSnackbar error={error} onClose={() => setError(undefined)} />
+            <NotificationSnackbar
+                message={message}
+                severity="error"
+                onClose={() => setMessage(undefined)}
+            />
         </>
     );
 }

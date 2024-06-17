@@ -15,18 +15,14 @@ import AccountCircle from '@mui/icons-material/AccountCircle';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { Outlet, useNavigate } from 'react-router-dom';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { useDispatch, useSelector } from 'react-redux';
 import { getUsername } from 'utils/user';
-import { clearUser } from 'features/userSlice';
+import Cookies from 'js-cookie';
 
 function Base() {
-    // @ts-ignore
-    const token = useSelector((state) => state.user.token);
-    const username = getUsername(token);
+    const username = getUsername();
 
     const [anchorEl, setAnchorEl] = useState(null);
 
-    const dispatch = useDispatch();
     const navigate = useNavigate();
 
     const handleMenu = (event) => {
@@ -38,8 +34,9 @@ function Base() {
     };
 
     const handleLogout = () => {
-        dispatch(clearUser());
+        Cookies.remove('token');
         handleClose();
+        navigate('/login');
     };
 
     return (
@@ -52,6 +49,7 @@ function Base() {
                             edge="start"
                             color="inherit"
                             aria-label="menu"
+                            onClick={() => navigate('/forms')}
                             sx={{ mr: 2 }}
                         >
                             <AccountTreeIcon />

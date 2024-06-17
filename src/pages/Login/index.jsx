@@ -1,29 +1,24 @@
 import { Box, Button, Paper, TextField } from '@mui/material';
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { saveUser } from 'features/userSlice';
 import { initiateAuth } from 'utils/aws';
 import { useNavigate } from 'react-router-dom';
 import { isAuth } from 'utils/user';
-import ErrorSnackbar from 'components/ErrorSnackbar';
+import NotificationSnackbar from 'components/NotificationSnackbar';
+import Cookies from 'js-cookie';
 
 function Login() {
-    // @ts-ignore
-    const token = useSelector((state) => state.user.token);
-
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
 
-    const [error, setError] = useState(undefined);
+    const [message, setMessage] = useState(undefined);
 
-    const dispatch = useDispatch();
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (isAuth(token)) {
+        if (isAuth()) {
             navigate('/forms');
         }
-    }, [token]);
+    }, []);
 
     const handleSubmit = () => {
         // Amazon Cognito creates a session which includes the id, access, and refresh tokens of an authenticated user.
@@ -31,10 +26,11 @@ function Login() {
         response
             .then((response) => {
                 const token = response.AuthenticationResult.IdToken;
-                dispatch(saveUser({ token }));
+                Cookies.set('token', token);
+                navigate('/forms');
             })
             .catch(() => {
-                setError('Authentication credentials are wrong.');
+                setMessage('Authentication credentials are wrong.');
             });
     };
 
@@ -82,7 +78,11 @@ function Login() {
                     </Button>
                 </Paper>
             </Box>
-            <ErrorSnackbar error={error} onClose={() => setError(undefined)} />
+            <NotificationSnackbar
+                message={message}
+                severity="error"
+                onClose={() => setMessage(undefined)}
+            />
         </>
     );
 }
