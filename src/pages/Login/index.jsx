@@ -1,8 +1,7 @@
 import { Box, Button, Paper, TextField } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { initiateAuth } from 'utils/aws';
 import { useNavigate } from 'react-router-dom';
-import { isAuth } from 'utils/user';
 import NotificationSnackbar from 'components/NotificationSnackbar';
 import Cookies from 'js-cookie';
 
@@ -13,12 +12,6 @@ function Login() {
     const [message, setMessage] = useState(undefined);
 
     const navigate = useNavigate();
-
-    useEffect(() => {
-        if (isAuth()) {
-            navigate('/forms');
-        }
-    }, []);
 
     const handleSubmit = () => {
         // Amazon Cognito creates a session which includes the id, access, and refresh tokens of an authenticated user.
@@ -62,6 +55,7 @@ function Login() {
                         onChange={(event) => setUsername(event.target.value)}
                         variant="standard"
                         value={username}
+                        inputProps={{ 'data-testid': 'username-input' }}
                     />
                     <TextField
                         sx={{ marginTop: '16px' }}
@@ -72,8 +66,13 @@ function Login() {
                         type="password"
                         variant="standard"
                         value={password}
+                        inputProps={{ 'data-testid': 'password-input' }}
                     />
-                    <Button sx={{ marginTop: '16px' }} type="submit">
+                    <Button
+                        sx={{ marginTop: '16px' }}
+                        type="submit"
+                        data-testid="submit-button"
+                    >
                         Log in
                     </Button>
                 </Paper>

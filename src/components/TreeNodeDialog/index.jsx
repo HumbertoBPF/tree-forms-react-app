@@ -75,11 +75,14 @@ function TreeNodeDialog({
                     rows={8}
                     variant="standard"
                     value={label}
+                    inputProps={{ 'data-testid': 'input-label' }}
                 />
             </DialogContent>
             <DialogActions>
                 <Button onClick={handleClose}>Cancel</Button>
-                <Button type="submit">Save</Button>
+                <Button type="submit" data-testid="save-button">
+                    Save
+                </Button>
             </DialogActions>
         </Dialog>
     );

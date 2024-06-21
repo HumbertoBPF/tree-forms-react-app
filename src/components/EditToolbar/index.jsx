@@ -5,8 +5,8 @@ import { GridRowModes, GridToolbarContainer } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import DeleteConfirmationDialog from 'components/DeleteConfirmationDialog';
-import api from 'api';
 import NotificationSnackbar from 'components/NotificationSnackbar';
+import { bulkDeleteForm } from 'api/routes';
 
 function EditToolbar({ maxId, rowSelectionModel, setRows, setRowModesModel }) {
     const [openConfirmationDialog, setOpenConfirmationDialog] = useState(false);
@@ -17,7 +17,7 @@ function EditToolbar({ maxId, rowSelectionModel, setRows, setRowModesModel }) {
         const id = maxId + 1;
         setRows((oldRows) => [
             ...oldRows,
-            { id, name: '', description: '', isNew: true },
+            { id: `${id}`, name: '', description: '', isNew: true },
         ]);
         setRowModesModel((oldModel) => ({
             ...oldModel,
@@ -32,12 +32,7 @@ function EditToolbar({ maxId, rowSelectionModel, setRows, setRowModesModel }) {
     const bulkDelete = () => {
         setIsDeleting(true);
 
-        api()
-            .delete('/form', {
-                data: {
-                    form_ids: rowSelectionModel,
-                },
-            })
+        bulkDeleteForm(rowSelectionModel)
             .then(() => {
                 setIsDeleting(false);
                 setOpenConfirmationDialog(false);
@@ -71,6 +66,7 @@ function EditToolbar({ maxId, rowSelectionModel, setRows, setRowModesModel }) {
                     color="primary"
                     startIcon={<AddIcon />}
                     onClick={handleClickAddButton}
+                    data-testid="add-button"
                 >
                     Add record
                 </Button>
@@ -79,6 +75,7 @@ function EditToolbar({ maxId, rowSelectionModel, setRows, setRowModesModel }) {
                     disabled={rowSelectionModel.length === 0}
                     startIcon={<DeleteIcon />}
                     onClick={handleClickDeleteButton}
+                    data-testid="bulk-delete-button"
                 >
                     Delete selected records
                 </Button>

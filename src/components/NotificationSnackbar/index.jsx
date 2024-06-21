@@ -8,13 +8,9 @@ function NotificationSnackbar({ message, onClose, severity = 'success' }) {
             anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             open={message !== undefined}
             onClose={onClose}
+            data-testid="snackbar"
         >
-            <Alert
-                // @ts-ignore
-                severity={severity}
-                variant="filled"
-                sx={{ width: '100%' }}
-            >
+            <Alert severity={severity} variant="filled" sx={{ width: '100%' }}>
                 {message}
             </Alert>
         </Snackbar>

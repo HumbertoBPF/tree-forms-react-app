@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
     DataGrid,
     GridActionsCellItem,
+    GridRow,
     GridRowEditStopReasons,
     GridRowModes,
 } from '@mui/x-data-grid';
@@ -12,10 +13,18 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Close';
 import EditToolbar from 'components/EditToolbar';
 import { useNavigate } from 'react-router-dom';
-import { isAuth } from 'utils/user';
-import api from 'api';
 import DeleteConfirmationDialog from 'components/DeleteConfirmationDialog';
 import NotificationSnackbar from 'components/NotificationSnackbar';
+import { createForm, deleteForm, getForms, updateForm } from 'api/routes';
+import PropTypes from 'prop-types';
+
+const CustomGridRow = (props) => (
+    <GridRow {...props} data-testid={props.rowId} />
+);
+
+CustomGridRow.propTypes = {
+    rowId: PropTypes.string.isRequired,
+};
 
 function Forms() {
     const [rows, setRows] = useState([]);
@@ -33,24 +42,18 @@ function Forms() {
     const maxId = rows.length;
 
     useEffect(() => {
-        if (isAuth()) {
-            api()
-                .get('/form')
-                .then((response) => {
-                    const { items } = response.data;
-                    setRows(items);
-                    setIsLoading(false);
-                })
-                .catch(() => {
-                    setMessage(
-                        'An error happened while loading your forms. Please try again.'
-                    );
-                    setIsLoading(false);
-                });
-            return;
-        }
-
-        navigate('/login');
+        getForms()
+            .then((response) => {
+                const { items } = response.data;
+                setRows(items);
+                setIsLoading(false);
+            })
+            .catch(() => {
+                setMessage(
+                    'An error happened while loading your forms. Please try again.'
+                );
+                setIsLoading(false);
+            });
     }, []);
 
     const handleRowEditStop = (params, event) => {
@@ -77,10 +80,9 @@ function Forms() {
         setDeletionId(id);
     };
 
-    const deleteForm = () => {
+    const handleConfirmDeletion = () => {
         setIsDeleting(true);
-        api()
-            .delete(`/form/${deletionId}`)
+        deleteForm(deletionId)
             .then(() => {
                 setRows(rows.filter((row) => row.id !== deletionId));
                 setIsDeleting(false);
@@ -113,8 +115,10 @@ function Forms() {
     const processRowUpdate = (newRow, originalRow) => {
         if (isFormValid(newRow)) {
             if (originalRow.isNew) {
-                api()
-                    .post('/form', newRow)
+                createForm({
+                    name: newRow.name,
+                    description: newRow.description,
+                })
                     .then((response) => {
                         const item = response.data;
                         setRows(
@@ -130,8 +134,10 @@ function Forms() {
                         setRows(rows.filter((row) => row.id !== newRow.id));
                     });
             } else {
-                api()
-                    .put(`/form/${newRow.id}`, newRow)
+                updateForm(newRow.id, {
+                    name: newRow.name,
+                    description: newRow.description,
+                })
                     .then((response) => {
                         const item = response.data;
                         setRows(
@@ -158,7 +164,7 @@ function Forms() {
             return updatedRow;
         }
 
-        setMessage('The name of a form must not be empty');
+        throw new Error('The name of a form must not be empty');
     };
 
     const handleRowModesModelChange = (newRowModesModel) => {
@@ -193,6 +199,7 @@ function Forms() {
                                 color: 'primary.main',
                             }}
                             onClick={handleSaveClick(id)}
+                            data-testid="save-item"
                         />,
                         <GridActionsCellItem
                             icon={<CancelIcon />}
@@ -213,6 +220,7 @@ function Forms() {
                         className="textPrimary"
                         onClick={() => navigate(`/forms/${id}`)}
                         color="inherit"
+                        data-testid="access-item"
                     />,
                     <GridActionsCellItem
                         icon={<EditIcon />}
@@ -221,6 +229,7 @@ function Forms() {
                         className="textPrimary"
                         onClick={handleEditClick(id)}
                         color="inherit"
+                        data-testid="update-item"
                     />,
                     <GridActionsCellItem
                         icon={<DeleteIcon />}
@@ -228,6 +237,7 @@ function Forms() {
                         key="Delete"
                         onClick={handleDeleteClick(id)}
                         color="inherit"
+                        data-testid="delete-item"
                     />,
                 ];
             },
@@ -239,14 +249,13 @@ function Forms() {
             <DeleteConfirmationDialog
                 loading={isDeleting}
                 onClose={() => setDeletionId(undefined)}
-                onConfirm={deleteForm}
+                onConfirm={handleConfirmDeletion}
                 open={deletionId !== undefined}
             />
 
             <DataGrid
                 autoHeight
                 rows={rows}
-                // @ts-ignore
                 columns={columns}
                 loading={isLoading}
                 checkboxSelection
@@ -259,7 +268,9 @@ function Forms() {
                 onRowModesModelChange={handleRowModesModelChange}
                 onRowEditStop={handleRowEditStop}
                 processRowUpdate={processRowUpdate}
+                onProcessRowUpdateError={(error) => setMessage(error.message)}
                 slots={{
+                    row: CustomGridRow,
                     toolbar: EditToolbar,
                 }}
                 slotProps={{

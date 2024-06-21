@@ -6,7 +6,7 @@ import {
     Grid,
     Typography,
 } from '@mui/material';
-import { RichTreeView, useTreeViewApiRef } from '@mui/x-tree-view';
+import { RichTreeView, TreeItem2, useTreeViewApiRef } from '@mui/x-tree-view';
 import React, { useEffect, useRef, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import ChecklistIcon from '@mui/icons-material/Checklist';
@@ -14,13 +14,29 @@ import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import EditIcon from '@mui/icons-material/Edit';
 import HomeIcon from '@mui/icons-material/Home';
 import SaveIcon from '@mui/icons-material/Save';
-import { isAuth } from 'utils/user';
 import { useNavigate, useParams } from 'react-router-dom';
-import api from 'api';
 import { deleteNode } from 'utils/tree';
 import TreeNodeDialog from 'components/TreeNodeDialog';
 import DeleteConfirmationDialog from 'components/DeleteConfirmationDialog';
 import NotificationSnackbar from 'components/NotificationSnackbar';
+import PropTypes from 'prop-types';
+import { getForm, updateFormTree } from 'api/routes';
+
+const CustomTreeItem = (props) => (
+    <TreeItem2
+        {...props}
+        slotProps={{
+            checkbox: {
+                'data-testid': 'checkbox',
+            },
+        }}
+        data-testid={props.itemId}
+    />
+);
+
+CustomTreeItem.propTypes = {
+    itemId: PropTypes.string.isRequired,
+};
 
 function FormTree() {
     const apiRef = useTreeViewApiRef();
@@ -53,25 +69,16 @@ function FormTree() {
     const { id } = params;
 
     useEffect(() => {
-        if (isAuth()) {
-            api()
-                .get(`/form/${id}`)
-                .then((response) => {
-                    const item = response.data;
-                    setForm(item);
-                    setTree(item.form_tree);
-                    setIsLoading(false);
-                })
-                .catch(() => {
-                    setIsLoading(false);
-                });
-        }
-    }, []);
-
-    useEffect(() => {
-        if (!isAuth()) {
-            navigate('/login');
-        }
+        getForm(id)
+            .then((response) => {
+                const item = response.data;
+                setForm(item);
+                setTree(item.form_tree);
+                setIsLoading(false);
+            })
+            .catch(() => {
+                setIsLoading(false);
+            });
     }, []);
 
     const getItemDescendantsIds = (item) => {
@@ -132,6 +139,7 @@ function FormTree() {
         });
 
         setTree(updatedTree);
+        setSelectedItems([]);
 
         setIsDeleting(false);
         setOpenDeleteConfirmationDialog(false);
@@ -150,8 +158,7 @@ function FormTree() {
     const handleSave = () => {
         setIsSaving(true);
 
-        api()
-            .put(`/form/${id}/form-tree`, tree)
+        updateFormTree(id, tree)
             .then(() => {
                 setIsSaving(false);
                 setNotification({
@@ -176,6 +183,7 @@ function FormTree() {
                         sx={{ marginBottom: '8px' }}
                         variant="outlined"
                         severity="warning"
+                        data-testid="not-found-alert"
                     >
                         <Typography variant="body2">
                             The requested resource could not be found.
@@ -204,6 +212,7 @@ function FormTree() {
                                 disabled={isSaving}
                                 onClick={handleSave}
                                 startIcon={<SaveIcon />}
+                                data-testid="save-form-button"
                             >
                                 Save form
                             </Button>
@@ -213,6 +222,7 @@ function FormTree() {
                         disabled={selectedItems.length !== 1}
                         onClick={() => handleOpenNodeDialog(null)}
                         startIcon={<AddIcon />}
+                        data-testid="add-child-button"
                     >
                         Add child
                     </Button>
@@ -224,6 +234,7 @@ function FormTree() {
                             )
                         }
                         startIcon={<EditIcon />}
+                        data-testid="edit-node-button"
                     >
                         Edit node
                     </Button>
@@ -231,6 +242,7 @@ function FormTree() {
                         disabled={selectedItems.length === 0}
                         onClick={handleSelectAllChildren}
                         startIcon={<ChecklistIcon />}
+                        data-testid="select-children-button"
                     >
                         Select children
                     </Button>
@@ -239,6 +251,7 @@ function FormTree() {
                         color="error"
                         onClick={handleDeleteAllSelected}
                         startIcon={<DeleteIcon />}
+                        data-testid="delete-selected-button"
                     >
                         Delete selected
                     </Button>
@@ -265,6 +278,9 @@ function FormTree() {
                             onSelectedItemsChange={handleSelectedItemsChange}
                             onItemSelectionToggle={handleItemSelectionToggle}
                             items={tree}
+                            slots={{
+                                item: CustomTreeItem,
+                            }}
                         />
                     </Box>
                     <NotificationSnackbar

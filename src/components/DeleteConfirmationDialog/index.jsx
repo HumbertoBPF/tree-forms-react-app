@@ -35,7 +35,9 @@ function DeleteConfirmationDialog({ loading, onClose, onConfirm, open }) {
                 <Button autoFocus onClick={onClose}>
                     Cancel
                 </Button>
-                <Button onClick={onConfirm}>Yes</Button>
+                <Button onClick={onConfirm} data-testid="confirm-button">
+                    Yes
+                </Button>
             </DialogActions>
         </Dialog>
     );

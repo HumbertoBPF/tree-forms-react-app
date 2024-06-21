@@ -5,18 +5,20 @@ import { jwtDecode } from 'jwt-decode';
 const tokenInterceptor = (config) => {
     const token = Cookies.get('token');
 
-    if (token) {
-        const payload = jwtDecode(token);
+    if (token === undefined) {
+        window.location.replace('/login');
+    }
 
-        const expiration = payload.exp;
+    const payload = jwtDecode(token);
 
-        const date = new Date();
-        const now = date.getTime() / 1000;
+    const expiration = payload.exp;
 
-        if (expiration && expiration < now) {
-            Cookies.remove('token');
-            window.location.replace('/login');
-        }
+    const date = new Date();
+    const now = date.getTime() / 1000;
+
+    if (expiration && expiration < now) {
+        Cookies.remove('token');
+        window.location.replace('/login');
     }
 
     return config;
