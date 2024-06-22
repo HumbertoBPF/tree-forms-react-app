@@ -1,24 +1,36 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
-import { jwtDecode } from 'jwt-decode';
+import { InvalidTokenError, jwtDecode } from 'jwt-decode';
+
+const logout = () => {
+    Cookies.remove('token');
+    window.location.replace('/login');
+};
+
+window.logout = logout;
 
 const tokenInterceptor = (config) => {
     const token = Cookies.get('token');
 
     if (token === undefined) {
-        window.location.replace('/login');
+        window.logout();
     }
 
-    const payload = jwtDecode(token);
+    try {
+        const payload = jwtDecode(token);
 
-    const expiration = payload.exp;
+        const expiration = payload.exp;
 
-    const date = new Date();
-    const now = date.getTime() / 1000;
+        const date = new Date();
+        const now = date.getTime() / 1000;
 
-    if (expiration && expiration < now) {
-        Cookies.remove('token');
-        window.location.replace('/login');
+        if (expiration && expiration < now) {
+            window.logout();
+        }
+    } catch (e) {
+        if (e instanceof InvalidTokenError) {
+            window.logout();
+        }
     }
 
     return config;

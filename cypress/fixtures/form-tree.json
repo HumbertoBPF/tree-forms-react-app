@@ -1,0 +1,23 @@
+[
+    {
+        "id": "root",
+        "label": "This is the first question",
+        "children": [
+            {
+                "id": "a1732aef-75da-4cb2-842d-86a8da8fd360",
+                "label": "First child",
+                "children": []
+            },
+            {
+                "id": "e7b6f33f-23e8-494d-9f28-353e4a60b348",
+                "label": "Second child",
+                "children": []
+            },
+            {
+                "id": "df3d0f3c-1f96-401b-8856-d9e971f0cd20",
+                "label": "Third quesiton",
+                "children": []
+            }
+        ]
+    }
+]
